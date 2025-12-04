@@ -364,3 +364,7 @@ BEGIN
   RAISE NOTICE 'Schema created successfully! Next: Run seed.sql to populate initial data.';
 END $$;
 
+
+
+
+

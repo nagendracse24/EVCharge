@@ -171,3 +171,7 @@ cat .env | grep SUPABASE_URL
 
 **You're live! Market's waiting. Start adding stations and iterate fast.** 🚀
 
+
+
+
+

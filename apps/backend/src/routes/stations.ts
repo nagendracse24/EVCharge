@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { supabase } from '../db/supabase';
+import { supabase, supabaseAdmin } from '../db/supabase';
 import {
   StationWithDetails,
   ApiResponse,
@@ -24,13 +24,50 @@ const nearbyQuerySchema = z.object({
 
 type NearbyQuery = z.infer<typeof nearbyQuerySchema>;
 
+// Schema for adding new station
+const addStationSchema = z.object({
+  name: z.string().min(3).max(200),
+  network: z.string().optional(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  address: z.string().min(10),
+  city: z.string().min(2),
+  state: z.string().min(2),
+  pincode: z.string().optional(),
+  is_24x7: z.boolean().optional().default(false),
+  parking_type: z.string().optional(),
+  connectors: z.array(z.object({
+    connector_type: z.string(),
+    power_kw: z.number().min(0),
+    is_dc_fast: z.boolean(),
+    count: z.number().int().min(1),
+    vehicle_type_supported: z.enum(['2W', '4W', 'BOTH']),
+  })).min(1),
+  pricing: z.array(z.object({
+    pricing_model: z.enum(['per_kwh', 'per_minute', 'flat_session']),
+    price_value: z.number().min(0),
+    parking_charges: z.number().optional(),
+  })).optional(),
+});
+
+// Schema for reporting issues
+const reportIssueSchema = z.object({
+  report_type: z.enum(['offline', 'price_change', 'busy', 'incorrect_info', 'other']),
+  value: z.string().optional(),
+});
+
+// Schema for adding review
+const addReviewSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().optional(),
+});
+
 export const stationsRoutes: FastifyPluginAsync = async (server) => {
   // GET /api/stations/nearby - Get nearby stations
   server.get('/nearby', async (request, reply) => {
     try {
       const query = nearbyQuerySchema.parse(request.query);
 
-      // Use the get_nearby_stations function
       const { data: stationsData, error: stationsError } = await supabase.rpc(
         'get_nearby_stations',
         {
@@ -54,10 +91,8 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
         };
       }
 
-      // Get station IDs
       const stationIds = stationsData.map((s: any) => s.id);
 
-      // Fetch connectors, pricing, amenities, reviews for all stations
       const [connectorsRes, pricingRes, amenitiesRes, reviewsRes] = await Promise.all([
         supabase.from('station_connectors').select('*').in('station_id', stationIds),
         supabase.from('station_pricing').select('*').in('station_id', stationIds),
@@ -68,7 +103,6 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
           .in('station_id', stationIds),
       ]);
 
-      // Get user's vehicle if vehicle_id provided
       let userVehicle: Vehicle | null = null;
       if (query.vehicle_id) {
         const { data: vehicleData } = await supabase
@@ -79,20 +113,17 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
         userVehicle = vehicleData;
       }
 
-      // Build enriched station objects
       const enrichedStations: StationWithDetails[] = stationsData.map((station: any) => {
         const connectors = connectorsRes.data?.filter((c) => c.station_id === station.id) || [];
         const pricing = pricingRes.data?.filter((p) => p.station_id === station.id) || [];
         const amenities = amenitiesRes.data?.find((a) => a.station_id === station.id);
         const stationReviews = reviewsRes.data?.filter((r) => r.station_id === station.id) || [];
 
-        // Calculate average rating
         const avg_rating =
           stationReviews.length > 0
             ? stationReviews.reduce((sum, r) => sum + r.rating, 0) / stationReviews.length
             : undefined;
 
-        // Calculate compatibility if vehicle provided
         let compatibility_status: 'compatible' | 'partial' | 'incompatible' | undefined;
         let estimated_cost: number | undefined;
         let estimated_charge_time_minutes: number | undefined;
@@ -114,13 +145,11 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
             ? 'partial'
             : 'incompatible';
 
-          // Estimate cost (20% to 80% charge as default)
           if (pricing.length > 0 && pricing[0].pricing_model === 'per_kwh') {
-            const energyNeeded = userVehicle.battery_capacity_kwh * 0.6; // 60% charge
+            const energyNeeded = userVehicle.battery_capacity_kwh * 0.6;
             estimated_cost = energyNeeded * pricing[0].price_value;
           }
 
-          // Estimate time
           const bestConnector = connectors
             .filter(
               (c: StationConnector) =>
@@ -148,7 +177,6 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
         };
       });
 
-      // Apply filters
       let filteredStations = enrichedStations;
 
       if (query.connector_type) {
@@ -167,7 +195,6 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
         filteredStations = filteredStations.filter((s) => s.network === query.network);
       }
 
-      // Apply sorting
       if (query.sort_by === 'price' && filteredStations.some((s) => s.pricing.length > 0)) {
         filteredStations.sort((a, b) => {
           const priceA = a.pricing[0]?.price_value || Infinity;
@@ -177,7 +204,6 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
       } else if (query.sort_by === 'rating') {
         filteredStations.sort((a, b) => (b.avg_rating || 0) - (a.avg_rating || 0));
       } else if (query.sort_by === 'best') {
-        // Combine distance, price, rating, trust
         filteredStations.sort((a, b) => {
           const scoreA =
             (a.trust_level || 50) / 100 +
@@ -190,7 +216,6 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
           return scoreB - scoreA;
         });
       }
-      // else defaults to distance (already sorted by DB function)
 
       return {
         data: filteredStations,
@@ -231,7 +256,6 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
     try {
       const { id } = request.params;
 
-      // Single optimized query with joins
       const { data: station, error: stationError } = await supabase
         .from('stations')
         .select(`
@@ -268,7 +292,7 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
         connectors: station.connectors || [],
         pricing: station.pricing || [],
         amenities: station.amenities?.[0] || undefined,
-        reviews: reviews.slice(0, 10), // Limit to 10 reviews
+        reviews: reviews.slice(0, 10),
         avg_rating,
         total_reviews: reviews.length,
       };
@@ -284,6 +308,258 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
         error: {
           message: 'Failed to fetch station details',
           code: 'STATION_DETAILS_ERROR',
+        },
+      };
+    }
+  });
+
+  // POST /api/stations - Add new station (with auth)
+  server.post('/', async (request, reply) => {
+    try {
+      // Get auth token
+      const authHeader = request.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        reply.status(401);
+        return {
+          data: null,
+          error: {
+            message: 'Authentication required',
+            code: 'UNAUTHORIZED',
+          },
+        };
+      }
+
+      const token = authHeader.substring(7);
+      const { data: userData, error: authError } = await supabase.auth.getUser(token);
+
+      if (authError || !userData.user) {
+        reply.status(401);
+        return {
+          data: null,
+          error: {
+            message: 'Invalid or expired token',
+            code: 'UNAUTHORIZED',
+          },
+        };
+      }
+
+      const body = addStationSchema.parse(request.body);
+
+      // Insert station
+      const { data: newStation, error: stationError } = await supabaseAdmin
+        .from('stations')
+        .insert({
+          name: body.name,
+          network: body.network,
+          latitude: body.latitude,
+          longitude: body.longitude,
+          address: body.address,
+          city: body.city,
+          state: body.state,
+          pincode: body.pincode,
+          is_24x7: body.is_24x7,
+          parking_type: body.parking_type,
+          source: 'crowdsourced',
+          trust_level: 50, // New user-submitted stations start at 50
+        })
+        .select()
+        .single();
+
+      if (stationError) throw stationError;
+
+      // Insert connectors
+      const connectorsToInsert = body.connectors.map((c) => ({
+        station_id: newStation.id,
+        ...c,
+      }));
+
+      await supabaseAdmin.from('station_connectors').insert(connectorsToInsert);
+
+      // Insert pricing if provided
+      if (body.pricing && body.pricing.length > 0) {
+        const pricingToInsert = body.pricing.map((p) => ({
+          station_id: newStation.id,
+          ...p,
+        }));
+        await supabaseAdmin.from('station_pricing').insert(pricingToInsert);
+      }
+
+      reply.status(201);
+      return {
+        data: newStation,
+        meta: {
+          message: 'Station added successfully! It will be reviewed by our team.',
+        },
+      };
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        reply.status(400);
+        return {
+          data: null,
+          error: {
+            message: 'Invalid station data',
+            code: 'INVALID_DATA',
+          },
+        };
+      }
+
+      server.log.error(error);
+      reply.status(500);
+      return {
+        data: null,
+        error: {
+          message: 'Failed to add station',
+          code: 'ADD_STATION_ERROR',
+        },
+      };
+    }
+  });
+
+  // POST /api/stations/:id/report - Report issue with station
+  server.post<{ Params: { id: string } }>('/:id/report', async (request, reply) => {
+    try {
+      const { id } = request.params;
+
+      // Optional auth - can report without login
+      let userId = null;
+      const authHeader = request.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        const { data: userData } = await supabase.auth.getUser(token);
+        userId = userData.user?.id || null;
+      }
+
+      const body = reportIssueSchema.parse(request.body);
+
+      const { data, error } = await supabaseAdmin
+        .from('station_reports')
+        .insert({
+          station_id: id,
+          user_id: userId,
+          report_type: body.report_type,
+          value: body.value,
+          status: 'pending',
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      reply.status(201);
+      return {
+        data,
+        meta: {
+          message: 'Report submitted successfully!',
+        },
+      };
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        reply.status(400);
+        return {
+          data: null,
+          error: {
+            message: 'Invalid report data',
+            code: 'INVALID_DATA',
+          },
+        };
+      }
+
+      server.log.error(error);
+      reply.status(500);
+      return {
+        data: null,
+        error: {
+          message: 'Failed to submit report',
+          code: 'REPORT_ERROR',
+        },
+      };
+    }
+  });
+
+  // POST /api/stations/:id/review - Add review (requires auth)
+  server.post<{ Params: { id: string } }>('/:id/review', async (request, reply) => {
+    try {
+      const { id } = request.params;
+
+      const authHeader = request.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        reply.status(401);
+        return {
+          data: null,
+          error: {
+            message: 'Authentication required',
+            code: 'UNAUTHORIZED',
+          },
+        };
+      }
+
+      const token = authHeader.substring(7);
+      const { data: userData, error: authError } = await supabase.auth.getUser(token);
+
+      if (authError || !userData.user) {
+        reply.status(401);
+        return {
+          data: null,
+          error: {
+            message: 'Invalid or expired token',
+            code: 'UNAUTHORIZED',
+          },
+        };
+      }
+
+      const body = addReviewSchema.parse(request.body);
+
+      const { data, error } = await supabaseAdmin
+        .from('station_reviews')
+        .insert({
+          station_id: id,
+          user_id: userData.user.id,
+          rating: body.rating,
+          comment: body.comment,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '23505') {
+          reply.status(409);
+          return {
+            data: null,
+            error: {
+              message: 'You have already reviewed this station',
+              code: 'DUPLICATE_REVIEW',
+            },
+          };
+        }
+        throw error;
+      }
+
+      reply.status(201);
+      return {
+        data,
+        meta: {
+          message: 'Review added successfully!',
+        },
+      };
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        reply.status(400);
+        return {
+          data: null,
+          error: {
+            message: 'Invalid review data',
+            code: 'INVALID_DATA',
+          },
+        };
+      }
+
+      server.log.error(error);
+      reply.status(500);
+      return {
+        data: null,
+        error: {
+          message: 'Failed to add review',
+          code: 'REVIEW_ERROR',
         },
       };
     }
@@ -322,4 +598,3 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
     }
   });
 };
-

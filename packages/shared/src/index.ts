@@ -286,3 +286,7 @@ export function estimateChargingTime(
   return (energyNeeded / (chargerPowerKw * efficiency)) * 60; // in minutes
 }
 
+
+
+
+

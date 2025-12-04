@@ -123,3 +123,7 @@ export const vehiclesRoutes: FastifyPluginAsync = async (server) => {
   );
 };
 
+
+
+
+

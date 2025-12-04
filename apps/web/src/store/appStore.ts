@@ -30,3 +30,7 @@ export const useAppStore = create<AppState>((set) => ({
   setSearchLocation: (location) => set({ searchLocation: location }),
 }))
 
+
+
+
+

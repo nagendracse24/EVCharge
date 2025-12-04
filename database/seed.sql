@@ -186,3 +186,7 @@ BEGIN
   RAISE NOTICE 'Next: Add more stations using the data template';
 END $$;
 
+
+
+
+

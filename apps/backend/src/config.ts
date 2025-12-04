@@ -16,6 +16,12 @@ const configSchema = z.object({
   // Redis (optional)
   UPSTASH_REDIS_URL: z.string().optional(),
   UPSTASH_REDIS_TOKEN: z.string().optional(),
+  
+  // Google Places API (optional - for station imports)
+  GOOGLE_PLACES_API_KEY: z.string().optional(),
+  
+  // OpenChargeMap API (optional - for station imports)
+  OPENCHARGEMAP_API_KEY: z.string().optional(),
 });
 
 export const config = configSchema.parse(process.env);

@@ -1,0 +1,32 @@
+# Render.com Configuration
+services:
+  # Backend API Service
+  - type: web
+    name: evcharge-backend
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_PORT
+        value: 10000
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: OPENCHARGEMAP_API_KEY
+        sync: false
+    healthCheckPath: /health
+    
+  # Cron job for data sync (optional, paid plan only)
+  # - type: cron
+  #   name: data-sync
+  #   schedule: "0 0 * * *"
+  #   buildCommand: npm install
+  #   startCommand: curl -X POST http://localhost:10000/api/admin/sync/all
+

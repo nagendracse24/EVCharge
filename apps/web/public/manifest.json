@@ -1,22 +1,32 @@
 {
-  "name": "EVCharge India",
+  "name": "EVCharge India - Find EV Charging Stations",
   "short_name": "EVCharge",
-  "description": "Find the best EV charging stations in India",
+  "description": "Compare prices, check compatibility, and discover nearby EV charging stations in India",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0ea5e9",
+  "background_color": "#0a0a0a",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["travel", "navigation", "utilities"],
+  "screenshots": [
+    {
+      "src": "/screenshot1.png",
+      "sizes": "540x720",
       "type": "image/png"
     }
   ]
 }
-
