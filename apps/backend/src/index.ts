@@ -23,7 +23,7 @@ async function start() {
     // Register CORS
     await server.register(cors, {
       origin: config.NODE_ENV === 'production' 
-        ? ['https://your-domain.com'] // Update with your domain
+        ? ['https://evcharge-india.vercel.app'] // Update with your domain
         : true,
       credentials: true,
     });
