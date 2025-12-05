@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { useVehicles } from '@/hooks/useVehicles'
+import { StationPricing } from '@/types/shared'
 
 interface ChargingCalculatorProps {
-  stationPricing?: Array<{ connector_type: string; pricing_model: string; price_value: number }>
+  stationPricing?: StationPricing[]
 }
 
 export function ChargingCalculator({ stationPricing }: ChargingCalculatorProps) {
