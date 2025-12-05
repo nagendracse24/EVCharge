@@ -1,6 +1,55 @@
 // Shared types for EVCharge India
 // Copied from packages/shared for deployment compatibility
 
+// ============= ENUMS =============
+
+export enum VehicleType {
+  TWO_WHEELER = '2W',
+  FOUR_WHEELER = '4W',
+}
+
+export enum ConnectorType {
+  // AC Connectors
+  TYPE2_AC = 'Type 2 AC',
+  BHARAT_AC001 = 'Bharat AC001',
+  
+  // DC Connectors
+  CCS2 = 'CCS2',
+  CHADEMO = 'CHAdeMO',
+  BHARAT_DC001 = 'Bharat DC001',
+  GBT_DC = 'GB/T DC',
+}
+
+export enum PricingModel {
+  PER_KWH = 'per_kwh',
+  PER_MINUTE = 'per_minute',
+  FLAT_SESSION = 'flat_session',
+}
+
+export enum StationStatus {
+  AVAILABLE = 'available',
+  OCCUPIED = 'occupied',
+  OFFLINE = 'offline',
+  UNKNOWN = 'unknown',
+}
+
+export enum DataSource {
+  SEED = 'seed',
+  CROWDSOURCED = 'crowdsourced',
+  CPO_API = 'cpo_api',
+  GOVERNMENT = 'government',
+}
+
+export enum ReportType {
+  OFFLINE = 'offline',
+  PRICE_CHANGE = 'price_change',
+  BUSY = 'busy',
+  INCORRECT_INFO = 'incorrect_info',
+  OTHER = 'other',
+}
+
+// ============= INTERFACES =============
+
 export interface Station {
   id: string
   name: string
@@ -58,6 +107,16 @@ export interface StationAmenities {
   created_at: string
 }
 
+export interface StationStatusRecord {
+  id: string
+  station_id: string
+  connector_id?: string
+  status: StationStatus
+  last_updated_at: string
+  source: DataSource
+  created_at: string
+}
+
 export interface StationReview {
   id: string
   station_id: string
@@ -65,15 +124,37 @@ export interface StationReview {
   rating: number
   comment?: string
   created_at: string
+  user?: {
+    id: string
+    email: string
+    full_name?: string
+  }
 }
+
+export interface StationReport {
+  id: string
+  station_id: string
+  user_id: string
+  report_type: ReportType
+  value?: string
+  created_at: string
+  status: 'pending' | 'accepted' | 'rejected'
+}
+
+// ============= API TYPES =============
 
 export interface StationWithDetails extends Station {
   connectors: StationConnector[]
   pricing: StationPricing[]
   amenities?: StationAmenities
+  current_status?: StationStatusRecord[]
   reviews?: StationReview[]
   review_count?: number
   avg_rating?: number
+  total_reviews?: number
+  compatibility_status?: 'compatible' | 'partial' | 'incompatible'
+  estimated_cost?: number
+  estimated_charge_time_minutes?: number
 }
 
 export interface Vehicle {
@@ -92,10 +173,64 @@ export interface Vehicle {
   created_at: string
 }
 
+export interface UserVehicle {
+  id: string
+  user_id: string
+  vehicle_id: string
+  nickname?: string
+  is_default: boolean
+  created_at: string
+  vehicle?: Vehicle
+}
+
+export interface StationFilters {
+  connector_types?: ConnectorType[]
+  is_dc_fast?: boolean
+  networks?: string[]
+  price_max?: number
+  min_rating?: number
+  has_amenities?: string[]
+  vehicle_id?: string
+}
+
+export interface StationQueryParams {
+  lat: number
+  lng: number
+  radius_km?: number
+  limit?: number
+  filters?: StationFilters
+  sort_by?: 'distance' | 'price' | 'rating' | 'best'
+}
+
 export interface ApiResponse<T> {
   data: T
-  meta?: any
+  meta?: {
+    total?: number
+    page?: number
+    limit?: number
+    [key: string]: any
+  }
+  error?: {
+    message: string
+    code?: string
+  }
 }
+
+// ============= UTILITY TYPES =============
+
+export interface Coordinates {
+  latitude: number
+  longitude: number
+}
+
+export interface BoundingBox {
+  north: number
+  south: number
+  east: number
+  west: number
+}
+
+// ============= HELPER FUNCTIONS =============
 
 export function calculateDistance(
   lat1: number,
@@ -116,3 +251,35 @@ export function calculateDistance(
   return R * c
 }
 
+export function isCompatible(
+  vehicleAC?: ConnectorType,
+  vehicleDC?: ConnectorType,
+  stationConnectors?: ConnectorType[]
+): boolean {
+  if (!stationConnectors || stationConnectors.length === 0) return false
+  
+  return stationConnectors.some(
+    (connector) => connector === vehicleAC || connector === vehicleDC
+  )
+}
+
+export function estimateChargingCost(
+  batteryCapacityKwh: number,
+  currentSoc: number,
+  targetSoc: number,
+  pricePerKwh: number
+): number {
+  const energyNeeded = batteryCapacityKwh * ((targetSoc - currentSoc) / 100)
+  return energyNeeded * pricePerKwh
+}
+
+export function estimateChargingTime(
+  batteryCapacityKwh: number,
+  currentSoc: number,
+  targetSoc: number,
+  chargerPowerKw: number,
+  efficiency: number = 0.9
+): number {
+  const energyNeeded = batteryCapacityKwh * ((targetSoc - currentSoc) / 100)
+  return (energyNeeded / (chargerPowerKw * efficiency)) * 60 // in minutes
+}
