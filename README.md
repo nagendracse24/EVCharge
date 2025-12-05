@@ -1,6 +1,6 @@
 # ⚡ EVCharge India
 
-**Find and compare 600+ EV charging stations across India**
+**Find and compare 600+ EV charging stations across India** 🚗
 
 <div align="center">
 
