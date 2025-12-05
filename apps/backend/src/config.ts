@@ -6,7 +6,8 @@ loadEnv();
 
 const configSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  API_PORT: z.coerce.number().default(3001),
+  PORT: z.coerce.number().default(3001), // Railway uses PORT, not API_PORT
+  API_PORT: z.coerce.number().optional(), // Keep for backwards compatibility
   
   // Supabase
   SUPABASE_URL: z.string().url(),
@@ -24,7 +25,13 @@ const configSchema = z.object({
   OPENCHARGEMAP_API_KEY: z.string().optional(),
 });
 
-export const config = configSchema.parse(process.env);
+const parsedConfig = configSchema.parse(process.env);
+
+// Use Railway's PORT if available, otherwise fall back to API_PORT
+export const config = {
+  ...parsedConfig,
+  API_PORT: parsedConfig.PORT || parsedConfig.API_PORT || 3001,
+};
 
 export type Config = z.infer<typeof configSchema>;
 
