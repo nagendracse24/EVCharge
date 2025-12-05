@@ -519,7 +519,7 @@ export function StationDetailPanel({ stationId, onClose }: StationDetailPanelPro
       </div>
 
       {/* Slot Booking Modal */}
-      {showBooking && station && (
+      {showBookingModal && station && (
         <SlotBooking
           stationId={stationId}
           stationName={station.name}

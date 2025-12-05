@@ -190,8 +190,11 @@ export interface StationFilters {
   price_max?: number
   min_rating?: number
   has_amenities?: string[]
+  amenities?: string[]
   vehicle_id?: string
   sort_by?: 'distance' | 'price' | 'rating' | 'best'
+  is_24x7?: boolean
+  min_power?: number
 }
 
 export interface StationQueryParams {

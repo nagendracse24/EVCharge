@@ -2,16 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { Calendar, Clock, Zap, CreditCard, Info, CheckCircle2 } from 'lucide-react'
+import { StationConnector } from '@/types/shared'
 
 interface SlotBookingProps {
   stationId: string
   stationName: string
-  connectors: Array<{
-    id: string
-    connector_type: string
-    power_kw: number
-    is_dc_fast: boolean
-  }>
+  connectors: StationConnector[]
   onClose: () => void
 }
 
