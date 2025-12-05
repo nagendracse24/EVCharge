@@ -5,13 +5,17 @@
 ---
 
 ## ⚡ **Option 1: Railway + Vercel (RECOMMENDED)**
-
+https://evcharge-india.vercel.app
 ### Step 1: Deploy Backend to Railway (5 min)
 
 1. Go to: https://railway.app/new
 2. Click "Deploy from GitHub repo"
 3. Connect GitHub → Select your repo
-4. Click "Add variables" and add:
+4. Railway will auto-detect settings. **Click "Configure"** and set:
+   - **Root Directory:** `apps/backend`
+   - **Build Command:** `npm install && npm run build`
+   - **Start Command:** `npm start`
+5. Click "Add variables" and add:
    ```
    NODE_ENV=production
    SUPABASE_URL=your_url_here
@@ -34,7 +38,7 @@
    NEXT_PUBLIC_API_URL=https://evcharge-backend.up.railway.app
    ```
 5. Click "Deploy"
-6. Done! Visit your app: `https://evcharge-india.vercel.app`
+6. Done! Visit your app: ``
 
 ### Step 3: Update CORS (2 min)
 
@@ -47,13 +51,27 @@ origin: config.NODE_ENV === 'production'
 
 Commit and push → Railway auto-deploys!
 
-### Step 4: Sync Data (3 min)
+### Step 4: Import Station Data (3 min)
 
-```bash
-curl -X POST https://evcharge-backend.up.railway.app/api/admin/sync/openchargemap \
-  -H "Content-Type: application/json" \
-  -d "{}"
+This step imports 598 stations from OpenChargeMap into your production database.
+
+**Windows PowerShell:**
+```powershell
+Invoke-WebRequest -Uri "https://evcharge-backend.up.railway.app/api/admin/sync/openchargemap" -Method POST -ContentType "application/json" -Body "{}"
 ```
+
+**Or use your browser:**
+Just open this URL in a new tab:
+```
+https://evcharge-backend.up.railway.app/api/admin/sync/openchargemap
+```
+
+**What this does:**
+- Fetches 600+ charging stations from OpenChargeMap
+- Imports them into your production Supabase database
+- Takes ~2-3 minutes to complete
+
+**Replace** `evcharge-backend.up.railway.app` with your actual Railway URL!
 
 ---
 

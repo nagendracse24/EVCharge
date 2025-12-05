@@ -1,4 +1,4 @@
-import { supabase } from '../db'
+import { supabase } from '../db/supabase'
 import { GooglePlacesService } from './googlePlaces'
 
 export class StationImporter {

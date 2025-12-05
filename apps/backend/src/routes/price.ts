@@ -4,7 +4,7 @@ import { priceEstimator } from '../services/priceEstimator'
 /**
  * Price estimation routes
  */
-export async function priceRoutes(server: FastifyPluginAsync) {
+export const priceRoutes: FastifyPluginAsync = async (server) => {
   
   // Get price estimate for a station
   server.get('/estimate/:stationId', async (request, reply) => {
