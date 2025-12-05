@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { supabase } from '../db/supabase';
-import { Vehicle, ApiResponse } from '@evcharge/shared';
+import { Vehicle, ApiResponse } from '../types/shared';
 
 export const vehiclesRoutes: FastifyPluginAsync = async (server) => {
   // GET /api/vehicles - List all supported vehicles

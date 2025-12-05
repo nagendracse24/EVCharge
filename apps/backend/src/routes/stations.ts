@@ -6,7 +6,7 @@ import {
   calculateDistance,
   Vehicle,
   StationConnector,
-} from '@evcharge/shared';
+} from '../types/shared';
 import { z } from 'zod';
 
 // Query schema for nearby stations

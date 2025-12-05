@@ -12,7 +12,6 @@
     "import-stations": "tsx src/scripts/import-stations.ts"
   },
   "dependencies": {
-    "@evcharge/shared": "*",
     "@fastify/cors": "^8.5.0",
     "@fastify/env": "^4.3.0",
     "@supabase/supabase-js": "^2.39.0",

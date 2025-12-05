@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { supabase } from '../db/supabase';
-import { UserVehicle, ApiResponse } from '@evcharge/shared';
+import { UserVehicle, ApiResponse } from '../types/shared';
 import { z } from 'zod';
 
 // Middleware to get user from Authorization header
