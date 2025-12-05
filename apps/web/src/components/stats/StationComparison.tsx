@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useStations } from '@/hooks/useStations'
 import { useUserLocation } from '@/hooks/useUserLocation'
-import { StationWithDetails } from '@evcharge/shared'
+import { StationWithDetails } from '@/types/shared'
 
 export function StationComparison() {
   const { location } = useUserLocation()
@@ -203,6 +203,8 @@ export function StationComparison() {
     </div>
   )
 }
+
+
 
 
 

@@ -2,7 +2,7 @@
 
 import { useRef, useEffect } from 'react'
 import Map, { Marker, NavigationControl } from 'react-map-gl/maplibre'
-import { StationWithDetails } from '@evcharge/shared'
+import { StationWithDetails } from '@/types/shared'
 
 interface MapViewProps {
   stations: StationWithDetails[]
@@ -105,4 +105,6 @@ export function MapView({ stations, center = [77.5946, 12.9716], onStationClick 
     </Map>
   )
 }
+
+
 

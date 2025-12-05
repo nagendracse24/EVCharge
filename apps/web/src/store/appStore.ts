@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Vehicle, StationFilters } from '@evcharge/shared'
+import { Vehicle, StationFilters } from '@/types/shared'
 
 interface AppState {
   selectedVehicle: Vehicle | null

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Vehicle, ApiResponse } from '@evcharge/shared'
+import { Vehicle, ApiResponse } from '@/types/shared'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 

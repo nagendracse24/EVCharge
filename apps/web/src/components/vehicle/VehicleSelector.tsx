@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { useVehicles } from '@/hooks/useVehicles'
-import { Vehicle } from '@evcharge/shared'
+import { Vehicle } from '@/types/shared'
 
 export function VehicleSelector() {
   const [isOpen, setIsOpen] = useState(false)
@@ -134,3 +134,5 @@ export function VehicleSelector() {
     </div>
   )
 }
+
+

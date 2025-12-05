@@ -63,3 +63,5 @@ export function RecentSearches({ onSelect, onClose }: RecentSearchesProps) {
 
 
 
+
+

@@ -1,6 +1,6 @@
 'use client'
 
-import { StationWithDetails } from '@evcharge/shared'
+import { StationWithDetails } from '@/types/shared'
 
 interface StationCardProps {
   station: StationWithDetails
@@ -99,3 +99,5 @@ export function StationCard({ station, onClick }: StationCardProps) {
     </div>
   )
 }
+
+

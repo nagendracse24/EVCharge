@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useAppStore } from '@/store/appStore'
-import { ConnectorType } from '@evcharge/shared'
+import { ConnectorType } from '@/types/shared'
 
 export function FilterPanel() {
   const { filters, setFilters, resetFilters } = useAppStore()
@@ -117,3 +117,5 @@ export function FilterPanel() {
     </div>
   )
 }
+
+
