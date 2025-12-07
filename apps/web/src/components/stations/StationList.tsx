@@ -7,8 +7,21 @@ import { GroupedStationCard } from './GroupedStationCard'
 interface GroupedStation {
   id: string
   name: string
-  networks: any[]
-  [key: string]: any
+  latitude: number
+  longitude: number
+  address: string
+  city?: string
+  is_24x7?: boolean
+  distance_km?: number
+  avg_rating?: number
+  networks: Array<{
+    network: string
+    stationId: string
+    connectors: any[]
+    pricing: any[]
+    station: any
+  }>
+  totalConnectors: number
 }
 
 interface StationListProps {
