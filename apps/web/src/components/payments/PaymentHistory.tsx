@@ -8,7 +8,7 @@ export function PaymentHistory() {
   const { data, isLoading, error, refetch } = usePaymentHistory()
   const [refunding, setRefunding] = useState<string | null>(null)
 
-  const payments = data?.data || []
+  const payments = (data as any)?.data || []
 
   const handleRefund = async (paymentId: string, bookingId: string) => {
     if (!confirm('Are you sure you want to request a refund? This will cancel your booking.')) {

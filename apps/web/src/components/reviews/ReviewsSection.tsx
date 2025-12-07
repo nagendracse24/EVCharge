@@ -18,7 +18,7 @@ export function ReviewsSection({ stationId }: ReviewsSectionProps) {
   const addReview = useAddReview()
   const voteReview = useVoteReview()
 
-  const reviews = data?.data || []
+  const reviews = (data as any)?.data || []
 
   const [newReview, setNewReview] = useState({
     rating: 5,

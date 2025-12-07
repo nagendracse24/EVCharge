@@ -18,7 +18,7 @@ export function PhotoGallery({ stationId }: PhotoGalleryProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
 
-  const photos = data?.data || []
+  const photos = (data as any)?.data || []
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

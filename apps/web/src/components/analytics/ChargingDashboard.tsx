@@ -8,8 +8,8 @@ export function ChargingDashboard() {
   const { data: statsData, isLoading: statsLoading } = useChargingStats()
   const { data: historyData, isLoading: historyLoading } = useChargingHistory()
 
-  const stats = statsData?.data
-  const history = historyData?.data || []
+  const stats = (statsData as any)?.data
+  const history = (historyData as any)?.data || []
 
   if (statsLoading) {
     return (

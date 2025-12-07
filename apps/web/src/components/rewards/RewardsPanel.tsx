@@ -9,9 +9,9 @@ export function RewardsPanel() {
   const { data: transactionsData } = useRewardsTransactions()
   const { data: leaderboardData } = useLeaderboard()
 
-  const profile = profileData?.data
-  const transactions = transactionsData?.data || []
-  const leaderboard = leaderboardData?.data || []
+  const profile = (profileData as any)?.data
+  const transactions = (transactionsData as any)?.data || []
+  const leaderboard = (leaderboardData as any)?.data || []
 
   if (profileLoading) {
     return <div className="glass-ultra rounded-xl p-6 h-96 animate-pulse bg-gray-800"></div>

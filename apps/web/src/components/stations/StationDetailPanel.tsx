@@ -97,7 +97,7 @@ export function StationDetailPanel({ stationId, onClose }: StationDetailPanelPro
     },
   })
 
-  const station = data?.data
+  const station = (data as any)?.data
 
   return (
     <>

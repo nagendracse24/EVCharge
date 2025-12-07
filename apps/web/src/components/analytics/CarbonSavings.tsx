@@ -5,7 +5,7 @@ import { Leaf, TreePine, Car, Droplets } from 'lucide-react'
 
 export function CarbonSavings() {
   const { data, isLoading } = useChargingStats()
-  const stats = data?.data
+  const stats = (data as any)?.data
 
   if (isLoading) {
     return <div className="glass-ultra rounded-xl p-6 h-64 animate-pulse bg-gray-800"></div>
