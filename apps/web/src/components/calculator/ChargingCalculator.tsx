@@ -42,19 +42,19 @@ export function ChargingCalculator({ stationPricing }: ChargingCalculatorProps) 
 
   return (
     <div className="card-ultra p-6">
-      <h3 className="text-xl font-bold mb-4">⚡ Charging Cost Calculator</h3>
+      <h3 className="text-xl font-bold mb-4 text-white">⚡ Charging Cost Calculator</h3>
 
       {/* Vehicle Selection */}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-2">Select Vehicle</label>
+        <label className="block text-sm font-medium mb-2 text-white">Select Vehicle</label>
         <select
           value={selectedVehicleId}
           onChange={(e) => setSelectedVehicleId(e.target.value)}
-          className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 focus:border-indigo-500 focus:outline-none transition-all"
+          className="w-full h-12 px-4 rounded-xl bg-gray-800 border border-gray-600 text-white focus:border-indigo-500 focus:outline-none transition-all"
         >
-          <option value="">Choose your EV...</option>
+          <option value="" className="bg-gray-800 text-white">Choose your EV...</option>
           {vehicles?.data.map((vehicle) => (
-            <option key={vehicle.id} value={vehicle.id}>
+            <option key={vehicle.id} value={vehicle.id} className="bg-gray-800 text-white">
               {vehicle.brand} {vehicle.model} ({vehicle.battery_capacity_kwh}kWh)
             </option>
           ))}
@@ -64,7 +64,7 @@ export function ChargingCalculator({ stationPricing }: ChargingCalculatorProps) 
       {/* Battery Range Sliders */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div>
-          <label className="block text-sm font-medium mb-2">From: {fromPercent}%</label>
+          <label className="block text-sm font-medium mb-2 text-white">From: {fromPercent}%</label>
           <input
             type="range"
             min="0"
@@ -72,11 +72,11 @@ export function ChargingCalculator({ stationPricing }: ChargingCalculatorProps) 
             step="5"
             value={fromPercent}
             onChange={(e) => setFromPercent(Number(e.target.value))}
-            className="w-full"
+            className="w-full accent-indigo-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-2">To: {toPercent}%</label>
+          <label className="block text-sm font-medium mb-2 text-white">To: {toPercent}%</label>
           <input
             type="range"
             min="0"
@@ -84,7 +84,7 @@ export function ChargingCalculator({ stationPricing }: ChargingCalculatorProps) 
             step="5"
             value={toPercent}
             onChange={(e) => setToPercent(Number(e.target.value))}
-            className="w-full"
+            className="w-full accent-indigo-500"
           />
         </div>
       </div>

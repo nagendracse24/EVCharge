@@ -139,3 +139,4 @@ CREATE POLICY "Anyone can view votes" ON report_votes FOR SELECT USING (true);
 CREATE POLICY "Authenticated users can vote" ON report_votes FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own votes" ON report_votes FOR UPDATE USING (auth.uid() = user_id);
 
+

@@ -15,7 +15,7 @@ import { AdvancedFilters, FilterOptions } from '@/components/filters/AdvancedFil
 import { useRecentSearches } from '@/hooks/useRecentSearches'
 import { StationListSkeleton } from '@/components/ui/LoadingSkeleton'
 
-// Lazy load heavy components
+// Lazy load heavy components for better performance
 const MapView = dynamic(() => import('@/components/map/MapView').then(mod => ({ default: mod.MapView })), {
   ssr: false,
   loading: () => (
@@ -27,6 +27,29 @@ const MapView = dynamic(() => import('@/components/map/MapView').then(mod => ({ 
     </div>
   ),
 })
+
+// Lazy load other heavy components
+const FilterPanel = dynamic(() => import('@/components/filters/FilterPanel').then(mod => ({ default: mod.FilterPanel })), {
+  loading: () => <div className="animate-pulse bg-gray-800 rounded-xl h-96"></div>,
+})
+
+const VehicleSelector = dynamic(() => import('@/components/vehicle/VehicleSelector').then(mod => ({ default: mod.VehicleSelector })), {
+  loading: () => <div className="animate-pulse bg-gray-800 rounded-xl h-11 w-48"></div>,
+})
+
+const MAJOR_CITIES = [
+  { name: 'Current Location', lat: 0, lng: 0 },
+  { name: 'Mumbai', lat: 19.0760, lng: 72.8777 },
+  { name: 'Delhi', lat: 28.6139, lng: 77.2090 },
+  { name: 'Bangalore', lat: 12.9716, lng: 77.5946 },
+  { name: 'Hyderabad', lat: 17.3850, lng: 78.4867 },
+  { name: 'Chennai', lat: 13.0827, lng: 80.2707 },
+  { name: 'Kolkata', lat: 22.5726, lng: 88.3639 },
+  { name: 'Pune', lat: 18.5204, lng: 73.8567 },
+  { name: 'Ahmedabad', lat: 23.0225, lng: 72.5714 },
+  { name: 'Jaipur', lat: 26.9124, lng: 75.7873 },
+  { name: 'Surat', lat: 21.1702, lng: 72.8311 },
+]
 
 export default function HomePage() {
   const { location } = useUserLocation()
@@ -41,14 +64,16 @@ export default function HomePage() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showRecentSearches, setShowRecentSearches] = useState(false)
   const [advancedFilters, setAdvancedFilters] = useState<FilterOptions>({})
+  const [showOnlyCompatible, setShowOnlyCompatible] = useState(false)
+  const [selectedCity, setSelectedCity] = useState<{name: string, lat: number, lng: number} | null>(null)
   const { user, signOut } = useAuth()
   const { addSearch } = useRecentSearches()
 
   const { data: vehicles } = useVehicles()
   const { data: stations, isLoading, error } = useStations({
-    lat: location?.latitude || 12.9716,
-    lng: location?.longitude || 77.5946,
-    radius_km: 10,
+    lat: selectedCity && selectedCity.lat !== 0 ? selectedCity.lat : (location?.latitude || 12.9716),
+    lng: selectedCity && selectedCity.lng !== 0 ? selectedCity.lng : (location?.longitude || 77.5946),
+    radius_km: 50, // Increased radius for city search
     vehicle_id: selectedVehicle?.id,
     ...filters,
   })
@@ -56,40 +81,71 @@ export default function HomePage() {
   // Filter and sort stations
   const filteredStations = (stations?.data || [])
     .filter((station: any) => {
-      // Search filter
+      // Skip grouped stations from advanced filtering (they use a different component)
+      const isGrouped = 'networks' in station && Array.isArray((station as any).networks)
+      
+      // Enhanced search filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase()
-        const matchesSearch = 
-          station.name.toLowerCase().includes(query) ||
-          station.address?.toLowerCase().includes(query) ||
-          station.city?.toLowerCase().includes(query) ||
-          station.network?.toLowerCase().includes(query)
-        if (!matchesSearch) return false
+        
+        // For grouped stations, search in all networks
+        if (isGrouped && station.networks) {
+          const matchesGrouped = 
+            station.name.toLowerCase().includes(query) ||
+            station.address?.toLowerCase().includes(query) ||
+            station.city?.toLowerCase().includes(query) ||
+            station.state?.toLowerCase().includes(query) ||
+            station.pincode?.includes(query) ||
+            station.networks.some((network: any) => 
+              network.network?.toLowerCase().includes(query)
+            )
+          if (!matchesGrouped) return false
+        } else {
+          // For regular stations
+          const matchesSearch = 
+            station.name.toLowerCase().includes(query) ||
+            station.address?.toLowerCase().includes(query) ||
+            station.city?.toLowerCase().includes(query) ||
+            station.state?.toLowerCase().includes(query) ||
+            station.network?.toLowerCase().includes(query) ||
+            station.pincode?.includes(query)
+          if (!matchesSearch) return false
+        }
       }
-
-      // Advanced filters
-      if (advancedFilters.connector_types && advancedFilters.connector_types.length > 0) {
-        const hasConnector = station.connectors.some(c => 
-          advancedFilters.connector_types?.includes(c.connector_type)
-        )
-        if (!hasConnector) return false
+      
+      // Compatible Only filter
+      if (showOnlyCompatible && selectedVehicle && station.compatibility_status) {
+        // Only show compatible stations, hide partial and incompatible
+        if (station.compatibility_status !== 'compatible') {
+          return false
+        }
       }
+      
+      // Advanced filters (only for regular stations)
+      if (!isGrouped) {
+        if (advancedFilters.connector_types && advancedFilters.connector_types.length > 0) {
+          const hasConnector = station.connectors?.some(c => 
+            advancedFilters.connector_types?.includes(c.connector_type)
+          )
+          if (!hasConnector) return false
+        }
 
-      if (advancedFilters.networks && advancedFilters.networks.length > 0) {
-        if (!advancedFilters.networks.includes(station.network || '')) return false
-      }
+        if (advancedFilters.networks && advancedFilters.networks.length > 0) {
+          if (!advancedFilters.networks.includes(station.network || '')) return false
+        }
 
-      if (advancedFilters.is_dc_fast) {
-        if (!station.connectors.some(c => c.is_dc_fast)) return false
-      }
+        if (advancedFilters.is_dc_fast) {
+          if (!station.connectors?.some(c => c.is_dc_fast)) return false
+        }
 
-      if (advancedFilters.is_24x7) {
-        if (!station.is_24x7) return false
-      }
+        if (advancedFilters.is_24x7) {
+          if (!station.is_24x7) return false
+        }
 
-      if (advancedFilters.min_power && advancedFilters.min_power > 0) {
-        const maxPower = Math.max(...station.connectors.map(c => c.power_kw))
-        if (maxPower < advancedFilters.min_power) return false
+        if (advancedFilters.min_power && advancedFilters.min_power > 0) {
+          const maxPower = Math.max(...(station.connectors?.map(c => c.power_kw) || [0]))
+          if (maxPower < advancedFilters.min_power) return false
+        }
       }
 
       if (advancedFilters.amenities && advancedFilters.amenities.length > 0) {
@@ -115,8 +171,24 @@ export default function HomePage() {
       if (sortBy === 'distance') {
         return (a.distance_km || 999) - (b.distance_km || 999)
       } else if (sortBy === 'price') {
-        const priceA = a.pricing[0]?.price_value || 999
-        const priceB = b.pricing[0]?.price_value || 999
+        // Handle both regular stations and grouped stations
+        let priceA = 999
+        let priceB = 999
+        
+        if ('networks' in a && a.networks && Array.isArray(a.networks) && a.networks.length > 0) {
+          // Grouped station - get lowest price from any network
+          priceA = Math.min(...a.networks.map((n: any) => n.pricing?.[0]?.price_value || 999))
+        } else if ('pricing' in a && a.pricing && Array.isArray(a.pricing) && a.pricing.length > 0) {
+          // Regular station
+          priceA = a.pricing[0]?.price_value || 999
+        }
+        
+        if ('networks' in b && b.networks && Array.isArray(b.networks) && b.networks.length > 0) {
+          priceB = Math.min(...b.networks.map((n: any) => n.pricing?.[0]?.price_value || 999))
+        } else if ('pricing' in b && b.pricing && Array.isArray(b.pricing) && b.pricing.length > 0) {
+          priceB = b.pricing[0]?.price_value || 999
+        }
+        
         return priceA - priceB
       } else if (sortBy === 'rating') {
         return (b.avg_rating || 0) - (a.avg_rating || 0)
@@ -163,7 +235,7 @@ export default function HomePage() {
 
           {/* SEARCH BAR */}
           <div className="relative flex-1 max-w-xl">
-            <svg className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
@@ -174,16 +246,36 @@ export default function HomePage() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   setShowRecentSearches(false)
-                  e.currentTarget.blur() // Remove focus to close keyboard on mobile
+                  e.currentTarget.blur()
+                }
+                if (e.key === 'Escape') {
+                  setSearchQuery('')
+                  setShowRecentSearches(false)
                 }
               }}
-              placeholder="Search stations, areas..."
-              className="w-full h-10 sm:h-11 pl-10 sm:pl-12 pr-3 sm:pr-4 rounded-xl 
+              placeholder="Search stations, networks, areas, pincode..."
+              className="w-full h-10 sm:h-11 pl-10 sm:pl-12 pr-10 sm:pr-12 rounded-xl 
                 bg-gray-900/90 border border-gray-700
                 text-white placeholder-gray-400 caret-white
-                focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20
+                focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20
                 transition-all text-sm sm:text-base"
             />
+            
+            {/* Clear Button */}
+            {searchQuery && (
+              <button
+                onClick={() => {
+                  setSearchQuery('')
+                  setShowRecentSearches(false)
+                }}
+                className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-800 rounded-full transition-colors"
+                aria-label="Clear search"
+              >
+                <svg className="w-4 h-4 text-gray-400 hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
             
             {/* Recent Searches */}
             {showRecentSearches && (
@@ -286,6 +378,27 @@ export default function HomePage() {
                         👤 My Profile
                       </a>
                       <a
+                        href="/analytics"
+                        className="block px-4 py-2.5 rounded-lg hover:bg-gray-800 transition-all text-white"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        📊 Analytics & History
+                      </a>
+                      <a
+                        href="/rewards"
+                        className="block px-4 py-2.5 rounded-lg hover:bg-gray-800 transition-all text-white"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        🏆 Rewards & Points
+                      </a>
+                      <a
+                        href="/payments"
+                        className="block px-4 py-2.5 rounded-lg hover:bg-gray-800 transition-all text-white"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        💳 Payment History
+                      </a>
+                      <a
                         href="/favorites"
                         className="block px-4 py-2.5 rounded-lg hover:bg-gray-800 transition-all text-white"
                         onClick={() => setShowUserMenu(false)}
@@ -320,6 +433,67 @@ export default function HomePage() {
       {/* MAIN CONTENT */}
       <div className="relative z-10">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-4 sm:py-5">
+          
+          {/* City Selector & Compatibility Filter */}
+          <div className="mb-4 flex flex-wrap items-center gap-3 bg-gray-900/50 p-3 rounded-xl border border-gray-700/50">
+            {/* City Selector */}
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <select
+                value={selectedCity?.name || 'Current Location'}
+                onChange={(e) => {
+                  const city = MAJOR_CITIES.find(c => c.name === e.target.value)
+                  setSelectedCity(city || null)
+                }}
+                className="px-4 py-2 rounded-lg bg-gray-800 border border-gray-600 text-white focus:border-emerald-500 focus:outline-none transition-all font-medium"
+              >
+                {MAJOR_CITIES.map((city) => (
+                  <option key={city.name} value={city.name}>
+                    {city.name === 'Current Location' ? '📍' : '🏙️'} {city.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Compatible Only Toggle */}
+            {selectedVehicle && (
+              <button
+                onClick={() => setShowOnlyCompatible(!showOnlyCompatible)}
+                className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                  showOnlyCompatible
+                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/30 border border-emerald-500'
+                    : 'bg-gray-800 border border-gray-600 text-gray-300 hover:border-emerald-500 hover:text-white'
+                }`}
+              >
+                {showOnlyCompatible ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    ✅ Compatible Only
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                    Show All Stations
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Info Badge */}
+            {selectedCity && selectedCity.name !== 'Current Location' && (
+              <span className="text-xs text-gray-400 italic">
+                Showing stations in {selectedCity.name}
+              </span>
+            )}
+          </div>
+
           {/* Filters & Results */}
           <div className="mb-4 sm:mb-5">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
@@ -328,8 +502,8 @@ export default function HomePage() {
                   onClick={() => setFilters({ sort_by: 'distance' })}
                   className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-semibold transition-all text-sm sm:text-base whitespace-nowrap ${
                     filters.sort_by === 'distance' || !filters.sort_by
-                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
-                      : 'bg-gray-800 border-2 border-gray-600 hover:border-indigo-500 text-white hover:bg-gray-700'
+                      ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30'
+                      : 'bg-gray-800 border-2 border-gray-600 hover:border-emerald-500 text-white hover:bg-gray-700'
                   }`}
                 >
                   Nearest
@@ -338,8 +512,8 @@ export default function HomePage() {
                   onClick={() => setFilters({ sort_by: 'price' })}
                   className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-semibold transition-all text-sm sm:text-base whitespace-nowrap ${
                     filters.sort_by === 'price'
-                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
-                      : 'bg-gray-800 border-2 border-gray-600 hover:border-indigo-500 text-white hover:bg-gray-700'
+                      ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30'
+                      : 'bg-gray-800 border-2 border-gray-600 hover:border-emerald-500 text-white hover:bg-gray-700'
                   }`}
                 >
                   Cheapest
@@ -348,8 +522,8 @@ export default function HomePage() {
                   onClick={() => setFilters({ sort_by: 'rating' })}
                   className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-semibold transition-all text-sm sm:text-base whitespace-nowrap ${
                     filters.sort_by === 'rating'
-                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
-                      : 'bg-gray-800 border-2 border-gray-600 hover:border-indigo-500 text-white hover:bg-gray-700'
+                      ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30'
+                      : 'bg-gray-800 border-2 border-gray-600 hover:border-emerald-500 text-white hover:bg-gray-700'
                   }`}
                 >
                   Top Rated
@@ -370,12 +544,21 @@ export default function HomePage() {
               {/* Results Count */}
               <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
                 <span className="text-sm sm:text-base text-gray-400">
-                  Found <span className="text-white font-bold text-base sm:text-lg">{filteredStations.length}</span> stations
-                  {searchQuery && <span className="text-xs ml-1">(filtered)</span>}
+                  {searchQuery ? (
+                    <>
+                      Found <span className="text-emerald-400 font-bold text-base sm:text-lg">{filteredStations.length}</span> 
+                      <span className="text-gray-500"> matching </span>
+                      <span className="text-white font-semibold">"{searchQuery}"</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-white font-bold text-base sm:text-lg">{filteredStations.length}</span> stations nearby
+                    </>
+                  )}
                 </span>
                 {selectedVehicle && (
-                  <span className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-indigo-500/20 text-indigo-400 text-xs sm:text-sm font-medium">
-                    Compatible with {selectedVehicle.brand}
+                  <span className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-emerald-500/20 text-emerald-400 text-xs sm:text-sm font-medium border border-emerald-500/30">
+                    ✓ Compatible with {selectedVehicle.brand}
                   </span>
                 )}
               </div>
@@ -493,7 +676,7 @@ export default function HomePage() {
                       </div>
 
                       <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-                        {station.connectors.some((c) => c.is_dc_fast) && (
+                        {station.connectors && station.connectors.some((c: any) => c.is_dc_fast) && (
                           <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-lg text-xs sm:text-sm font-semibold bg-indigo-500/20 text-indigo-400">
                             ⚡ DC Fast
                           </span>
@@ -508,9 +691,15 @@ export default function HomePage() {
                             {station.network}
                           </span>
                         )}
+                        {/* Show network count for grouped stations */}
+                        {(station as any).networks && (
+                          <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-lg text-xs sm:text-sm font-semibold bg-indigo-500/20 text-indigo-400">
+                            ⚡ {(station as any).networks.length} Network{(station as any).networks.length > 1 ? 's' : ''}
+                          </span>
+                        )}
                       </div>
 
-                      {station.pricing[0] && (
+                      {station.pricing && station.pricing[0] && (
                         <div className="flex items-center justify-between pt-2 sm:pt-3 border-t border-white/5">
                           <div>
                             <div className="text-xs text-gray-500 mb-0.5 sm:mb-1">
@@ -533,23 +722,35 @@ export default function HomePage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 sm:py-16">
+              <div className="text-center py-12 sm:py-16 px-4">
                 <div className="text-5xl sm:text-7xl mb-3 sm:mb-4">🔍</div>
-                <h3 className="text-xl sm:text-2xl font-bold mb-2 px-4">
+                <h3 className="text-xl sm:text-2xl font-bold mb-3 text-white">
                   {searchQuery ? `No stations matching "${searchQuery}"` : 'No stations found'}
                 </h3>
-                <p className="text-sm sm:text-base text-gray-400 px-4">
+                <div className="text-sm sm:text-base text-gray-400 space-y-2 max-w-md mx-auto">
                   {searchQuery ? (
-                    <button 
-                      onClick={() => setSearchQuery('')}
-                      className="text-indigo-400 hover:text-indigo-300 underline"
-                    >
-                      Clear search
-                    </button>
+                    <>
+                      <p>Try searching for:</p>
+                      <ul className="text-left list-disc list-inside space-y-1 text-gray-500">
+                        <li>Station name (e.g., "JW Marriott", "Hero MotoCorp")</li>
+                        <li>Network (e.g., "Tata", "Statiq", "Aether")</li>
+                        <li>Area or city (e.g., "Whitefield", "Bangalore")</li>
+                        <li>Pincode (e.g., "560066")</li>
+                      </ul>
+                      <button 
+                        onClick={() => setSearchQuery('')}
+                        className="mt-4 px-6 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium transition-colors inline-block"
+                      >
+                        Clear search & show all
+                      </button>
+                    </>
                   ) : (
-                    'Try adjusting your filters or search area'
+                    <>
+                      <p>No charging stations found in this area.</p>
+                      <p className="text-xs">Try selecting a different vehicle or adjusting your location.</p>
+                    </>
                   )}
-                </p>
+                </div>
               </div>
             )}
           </div>

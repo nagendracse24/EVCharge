@@ -37,3 +37,4 @@ SELECT COUNT(*) as total_favorites FROM user_favorites;
 
 
 
+

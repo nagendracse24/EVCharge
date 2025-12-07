@@ -10,7 +10,15 @@ import { adminRoutes } from './routes/admin';
 import { bookingsRoutes } from './routes/bookings';
 import { reportsRoutes } from './routes/reports';
 import { priceRoutes } from './routes/price';
+import { realtimeRoutes } from './routes/realtime';
+import { paymentRoutes } from './routes/payments';
+import { photosRoutes } from './routes/photos';
+import { reviewsRoutes } from './routes/reviews';
+import { analyticsRoutes } from './routes/analytics';
+import { rewardsRoutes } from './routes/rewards';
+import { notificationsRoutes } from './routes/notifications';
 import { dataAggregator } from './services/dataAggregator';
+import { initializeRealtimeServer } from './websocket/realtimeServer';
 
 const server = Fastify({
   logger: {
@@ -38,14 +46,25 @@ async function start() {
     await server.register(bookingsRoutes);
     await server.register(reportsRoutes, { prefix: '/api/reports' });
     await server.register(priceRoutes, { prefix: '/api/price' });
+    await server.register(realtimeRoutes, { prefix: '/api/realtime' });
+    await server.register(paymentRoutes);
+    await server.register(photosRoutes);
+    await server.register(reviewsRoutes);
+    await server.register(analyticsRoutes);
+    await server.register(rewardsRoutes);
+    await server.register(notificationsRoutes);
 
     // Start server
     const port = config.API_PORT;
     await server.listen({ port, host: '0.0.0.0' });
     
+    // Initialize WebSocket server for real-time updates
+    initializeRealtimeServer(server);
+    
     console.log(`🚀 Backend server running on http://localhost:${port}`);
     console.log(`📊 Environment: ${config.NODE_ENV}`);
     console.log(`💡 Frontend should connect to: http://localhost:${port}`);
+    console.log(`📡 WebSocket server ready at ws://localhost:${port}/ws`);
     
     // Start auto-sync for data sources (production only)
     if (config.NODE_ENV === 'production') {

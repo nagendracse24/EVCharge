@@ -23,6 +23,10 @@ const configSchema = z.object({
   
   // OpenChargeMap API (optional - for station imports)
   OPENCHARGEMAP_API_KEY: z.string().optional(),
+  
+  // Razorpay Payment Gateway
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
 });
 
 const parsedConfig = configSchema.parse(process.env);

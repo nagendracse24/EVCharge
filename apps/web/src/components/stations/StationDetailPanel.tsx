@@ -201,13 +201,13 @@ export function StationDetailPanel({ stationId, onClose }: StationDetailPanelPro
         {/* Compact Quick Actions */}
         {!isLoading && station && (
           <div className="px-4 pt-4">
-            <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="grid grid-cols-3 gap-2 mb-3 mt-4">
               {/* Book Slot Button - Prominent */}
               <button
                 onClick={() => setShowBookingModal(true)}
-                className="col-span-3 px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 transition-all flex items-center justify-center gap-2 font-semibold text-sm shadow-lg shadow-indigo-500/30"
+                className="col-span-3 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 transition-all flex items-center justify-center gap-2 font-bold text-base shadow-lg shadow-emerald-500/30"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 Book Slot
@@ -523,8 +523,39 @@ export function StationDetailPanel({ stationId, onClose }: StationDetailPanelPro
         <SlotBooking
           stationId={stationId}
           stationName={station.name}
+          network={station.network || 'Unknown'}
           connectors={station.connectors || []}
           onClose={() => setShowBookingModal(false)}
+        />
+      )}
+
+      {/* Report Price Modal */}
+      {showReportPriceModal && station && (
+        <ReportPrice
+          stationId={stationId}
+          stationName={station.name}
+          connectorTypes={station.connectors?.map(c => c.connector_type) || []}
+          onClose={() => setShowReportPriceModal(false)}
+          onSuccess={() => {
+            setShowReportPriceModal(false)
+            setSuccessMessage('✅ Price reported successfully!')
+            setTimeout(() => setSuccessMessage(null), 3000)
+          }}
+        />
+      )}
+
+      {/* Report Availability Modal */}
+      {showReportAvailabilityModal && station && (
+        <ReportAvailability
+          stationId={stationId}
+          stationName={station.name}
+          totalConnectors={station.connectors?.length || 0}
+          onClose={() => setShowReportAvailabilityModal(false)}
+          onSuccess={() => {
+            setShowReportAvailabilityModal(false)
+            setSuccessMessage('✅ Availability reported successfully!')
+            setTimeout(() => setSuccessMessage(null), 3000)
+          }}
         />
       )}
     </>

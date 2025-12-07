@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify'
-import { supabase } from '../db/supabase'
+import { supabase, supabaseAdmin } from '../db/supabase'
 
 export const bookingsRoutes: FastifyPluginAsync = async (server) => {
   // Get available slots for a station/connector
@@ -48,14 +48,23 @@ export const bookingsRoutes: FastifyPluginAsync = async (server) => {
       special_instructions,
     } = request.body as any
 
-    // Get user from auth header (you'll need to implement auth middleware)
+    // Get user from auth header
     const authHeader = request.headers.authorization
     if (!authHeader) {
       return reply.code(401).send({ error: 'Unauthorized' })
     }
 
-    // For now, mock user_id - you should get this from JWT token
-    const user_id = '00000000-0000-0000-0000-000000000000' // Replace with actual user
+    // Extract JWT token and get user_id
+    const token = authHeader.replace('Bearer ', '')
+    
+    // Verify token with Supabase and get user
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    
+    if (authError || !user) {
+      return reply.code(401).send({ error: 'Invalid or expired token' })
+    }
+    
+    const user_id = user.id
 
     try {
       // Check slot availability
@@ -76,8 +85,8 @@ export const bookingsRoutes: FastifyPluginAsync = async (server) => {
         return reply.code(409).send({ error: 'Slot not available' })
       }
 
-      // Create booking
-      const { data: booking, error } = await supabase
+      // Create booking (using admin client to bypass RLS since we've verified the user)
+      const { data: booking, error } = await supabaseAdmin
         .from('slot_bookings')
         .insert({
           user_id,
@@ -113,11 +122,18 @@ export const bookingsRoutes: FastifyPluginAsync = async (server) => {
       return reply.code(401).send({ error: 'Unauthorized' })
     }
 
-    // Mock user_id - replace with actual JWT parsing
-    const user_id = '00000000-0000-0000-0000-000000000000'
+    // Extract JWT token and get user_id
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    
+    if (authError || !user) {
+      return reply.code(401).send({ error: 'Invalid or expired token' })
+    }
+    
+    const user_id = user.id
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('slot_bookings')
         .select(
           `
@@ -150,7 +166,7 @@ export const bookingsRoutes: FastifyPluginAsync = async (server) => {
     }
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('slot_bookings')
         .update({
           status: 'cancelled',
@@ -175,7 +191,7 @@ export const bookingsRoutes: FastifyPluginAsync = async (server) => {
     const { id } = request.params as { id: string }
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('slot_bookings')
         .select(
           `
@@ -201,7 +217,7 @@ export const bookingsRoutes: FastifyPluginAsync = async (server) => {
     const { station_id } = request.params as { station_id: string }
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('station_slot_config')
         .select('*')
         .eq('station_id', station_id)

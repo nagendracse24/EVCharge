@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify'
-import { supabase } from '../db/supabase'
+import { supabase, supabaseAdmin } from '../db/supabase'
 
 export async function favoritesRoutes(server: FastifyInstance) {
   // GET /api/favorites - Get user's favorite stations
@@ -18,7 +18,7 @@ export async function favoritesRoutes(server: FastifyInstance) {
       }
 
       // Get user's favorites with station details
-      const { data: favorites, error } = await supabase
+      const { data: favorites, error } = await supabaseAdmin
         .from('user_favorites')
         .select(`
           id,
@@ -75,7 +75,7 @@ export async function favoritesRoutes(server: FastifyInstance) {
       }
 
       // Check if already favorited
-      const { data: existing } = await supabase
+      const { data: existing } = await supabaseAdmin
         .from('user_favorites')
         .select('id')
         .eq('user_id', user.id)
@@ -87,7 +87,7 @@ export async function favoritesRoutes(server: FastifyInstance) {
       }
 
       // Add to favorites
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('user_favorites')
         .insert({
           user_id: user.id,
@@ -124,7 +124,7 @@ export async function favoritesRoutes(server: FastifyInstance) {
           return reply.code(401).send({ error: { message: 'Invalid token' } })
         }
 
-        const { error } = await supabase
+        const { error } = await supabaseAdmin
           .from('user_favorites')
           .delete()
           .eq('user_id', user.id)
@@ -159,7 +159,7 @@ export async function favoritesRoutes(server: FastifyInstance) {
           return reply.send({ data: { is_favorite: false } })
         }
 
-        const { data } = await supabase
+        const { data } = await supabaseAdmin
           .from('user_favorites')
           .select('id')
           .eq('user_id', user.id)

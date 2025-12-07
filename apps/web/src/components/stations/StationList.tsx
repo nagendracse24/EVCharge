@@ -2,9 +2,17 @@
 
 import { StationWithDetails } from '@/types/shared'
 import { StationCard } from './StationCard'
+import { GroupedStationCard } from './GroupedStationCard'
+
+interface GroupedStation {
+  id: string
+  name: string
+  networks: any[]
+  [key: string]: any
+}
 
 interface StationListProps {
-  stations: StationWithDetails[]
+  stations: (StationWithDetails | GroupedStation)[]
   isLoading?: boolean
   onStationClick?: (stationId: string) => void
 }
@@ -32,15 +40,32 @@ export function StationList({ stations, isLoading, onStationClick }: StationList
     )
   }
 
+  // Helper to check if station is grouped
+  const isGroupedStation = (station: any): station is GroupedStation => {
+    return 'networks' in station && Array.isArray(station.networks)
+  }
+
   return (
     <div>
-      {stations.map((station) => (
-        <StationCard
-          key={station.id}
-          station={station}
-          onClick={() => onStationClick?.(station.id)}
-        />
-      ))}
+      {stations.map((station) => {
+        if (isGroupedStation(station)) {
+          return (
+            <GroupedStationCard
+              key={station.id}
+              station={station}
+              onStationClick={onStationClick || (() => {})}
+            />
+          )
+        }
+        
+        return (
+          <StationCard
+            key={station.id}
+            station={station as StationWithDetails}
+            onClick={() => onStationClick?.(station.id)}
+          />
+        )
+      })}
     </div>
   )
 }

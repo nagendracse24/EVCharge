@@ -30,3 +30,4 @@ services:
   #   buildCommand: npm install
   #   startCommand: curl -X POST http://localhost:10000/api/admin/sync/all
 
+

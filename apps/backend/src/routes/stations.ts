@@ -8,6 +8,7 @@ import {
   StationConnector,
 } from '../types/shared';
 import { z } from 'zod';
+import { StationGrouper } from '../services/stationGrouper';
 
 // Query schema for nearby stations
 const nearbyQuerySchema = z.object({
@@ -20,6 +21,7 @@ const nearbyQuerySchema = z.object({
   is_dc_fast: z.coerce.boolean().optional(),
   network: z.string().optional(),
   sort_by: z.enum(['distance', 'price', 'rating', 'best']).optional().default('distance'),
+  group_duplicates: z.coerce.boolean().optional().default(true), // NEW: Group stations at same location
 });
 
 type NearbyQuery = z.infer<typeof nearbyQuerySchema>;
@@ -129,14 +131,16 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
         let estimated_charge_time_minutes: number | undefined;
 
         if (userVehicle && connectors.length > 0) {
+          // Match EXACT connector type AND DC/AC type
           const hasFullCompatibility = connectors.some(
             (c: StationConnector) =>
-              c.connector_type === userVehicle.dc_connector_type ||
-              c.connector_type === userVehicle.ac_connector_type
+              (c.connector_type === userVehicle.dc_connector_type && c.is_dc_fast === true) ||
+              (c.connector_type === userVehicle.ac_connector_type && c.is_dc_fast === false)
           );
 
           const hasPartialCompatibility = connectors.some(
-            (c: StationConnector) => c.connector_type === userVehicle.ac_connector_type
+            (c: StationConnector) => 
+              c.connector_type === userVehicle.ac_connector_type && c.is_dc_fast === false
           );
 
           compatibility_status = hasFullCompatibility
@@ -153,8 +157,8 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
           const bestConnector = connectors
             .filter(
               (c: StationConnector) =>
-                c.connector_type === userVehicle.dc_connector_type ||
-                c.connector_type === userVehicle.ac_connector_type
+                (c.connector_type === userVehicle.dc_connector_type && c.is_dc_fast === true) ||
+                (c.connector_type === userVehicle.ac_connector_type && c.is_dc_fast === false)
             )
             .sort((a: StationConnector, b: StationConnector) => b.power_kw - a.power_kw)[0];
 
@@ -195,6 +199,10 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
         filteredStations = filteredStations.filter((s) => s.network === query.network);
       }
 
+      // Don't auto-filter by vehicle - just mark compatibility
+      // Users can see all stations and make informed decisions
+      // Vehicle filter is handled by frontend if user explicitly wants it
+
       if (query.sort_by === 'price' && filteredStations.some((s) => s.pricing.length > 0)) {
         filteredStations.sort((a, b) => {
           const priceA = a.pricing[0]?.price_value || Infinity;
@@ -217,14 +225,25 @@ export const stationsRoutes: FastifyPluginAsync = async (server) => {
         });
       }
 
+      // Group duplicate stations if requested
+      let finalStations = filteredStations;
+      let grouped = false;
+
+      if (query.group_duplicates && StationGrouper.shouldGroup(filteredStations)) {
+        const groupedStations = StationGrouper.groupStations(filteredStations);
+        finalStations = groupedStations as any; // Type will be GroupedStation[]
+        grouped = true;
+      }
+
       return {
-        data: filteredStations,
+        data: finalStations,
         meta: {
-          total: filteredStations.length,
+          total: finalStations.length,
           query_location: { lat: query.lat, lng: query.lng },
           radius_km: query.radius_km,
           vehicle_id: query.vehicle_id,
           sort_by: query.sort_by,
+          grouped, // Indicate if stations were grouped
         },
       };
     } catch (error) {

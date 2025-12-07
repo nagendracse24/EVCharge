@@ -48,30 +48,33 @@ export function FilterPanel() {
           </select>
         </div>
 
-        {/* DC Fast Charging */}
+        {/* Charger Speed - AETHER-INSPIRED CHIPS */}
         <div>
-          <label className="flex items-center gap-3 cursor-pointer group">
-            <div className="relative">
-              <input
-                type="checkbox"
-                checked={filters.is_dc_fast || false}
-                onChange={(e) => setFilters({ is_dc_fast: e.target.checked || undefined })}
-                className="sr-only"
-              />
-              <div className={`w-12 h-7 rounded-full transition-all duration-300 ${
-                filters.is_dc_fast
-                  ? 'gradient-primary shadow-lg'
-                  : 'bg-gray-200'
-              }`}>
-                <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${
-                  filters.is_dc_fast ? 'translate-x-6' : 'translate-x-1'
-                } mt-1`}></div>
-              </div>
-            </div>
-            <span className="text-sm font-semibold text-gray-700 group-hover:text-purple-600 transition-colors">
-              ⚡ DC Fast Charging Only
-            </span>
+          <label className="block text-sm font-semibold text-gray-700 mb-3">
+            ⚡ Charger Speed
           </label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setFilters({ is_dc_fast: undefined })}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                !filters.is_dc_fast
+                  ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-500/30'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              All Speeds
+            </button>
+            <button
+              onClick={() => setFilters({ is_dc_fast: true })}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                filters.is_dc_fast
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/30'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              ⚡ Fast Only (DC)
+            </button>
+          </div>
         </div>
 
         {/* Connector Type */}
