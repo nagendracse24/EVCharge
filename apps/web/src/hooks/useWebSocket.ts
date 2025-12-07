@@ -155,7 +155,9 @@ export function useStationRealtime(stationId: string | null) {
   useEffect(() => {
     if (stationId && isConnected) {
       subscribe(stationId);
-      return () => unsubscribe(stationId);
+      return () => {
+        unsubscribe(stationId);
+      };
     }
   }, [stationId, isConnected, subscribe, unsubscribe]);
 
