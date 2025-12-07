@@ -14,6 +14,7 @@
     "@supabase/supabase-js": "^2.39.0",
     "@tanstack/react-query": "^5.14.0",
     "critters": "^0.0.23",
+    "date-fns": "^3.0.0",
     "lucide-react": "^0.555.0",
     "maplibre-gl": "^3.6.2",
     "next": "14.0.4",
