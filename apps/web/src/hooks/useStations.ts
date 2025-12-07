@@ -19,6 +19,7 @@ async function fetchStations(params: UseStationsParams): Promise<ApiResponse<Sta
   const queryParams = new URLSearchParams()
   queryParams.append('lat', params.lat.toString())
   queryParams.append('lng', params.lng.toString())
+  queryParams.append('group_duplicates', 'true') // Enable station grouping by default
   
   if (params.radius_km) queryParams.append('radius_km', params.radius_km.toString())
   if (params.limit) queryParams.append('limit', params.limit.toString())
