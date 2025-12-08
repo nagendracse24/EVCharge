@@ -281,3 +281,6 @@ SELECT 'Advanced features tables created successfully!' as status;
 SELECT tablename FROM pg_tables 
 WHERE tablename IN ('charging_history', 'user_rewards', 'rewards_transactions', 'trip_plans', 'user_notifications', 'price_alerts');
 
+
+
+

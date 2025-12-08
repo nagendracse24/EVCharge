@@ -59,3 +59,6 @@ Add these in Vercel Dashboard → Settings → Environment Variables:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_RAZORPAY_KEY_ID`
 
+
+
+

@@ -158,3 +158,6 @@ COMMENT ON FUNCTION update_status_aggregation() IS 'Automatically updates aggreg
 COMMENT ON FUNCTION cleanup_expired_status() IS 'Removes old status reports (run daily via cron)';
 
 
+
+
+

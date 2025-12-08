@@ -148,3 +148,6 @@ const MAJOR_CITIES = [
 
 **What do you want to do?** Type A, B, or C!
 
+
+
+

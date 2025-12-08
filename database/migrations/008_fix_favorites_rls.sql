@@ -28,3 +28,6 @@ CREATE POLICY "Users can remove their own favorites"
   USING (auth.uid() = user_id);
 
 
+
+
+

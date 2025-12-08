@@ -524,6 +524,7 @@ export function StationDetailPanel({ stationId, onClose }: StationDetailPanelPro
           stationId={stationId}
           stationName={station.name}
           network={station.network || 'Unknown'}
+          networks={(station as any).networks} // For grouped stations
           connectors={station.connectors || []}
           onClose={() => setShowBookingModal(false)}
         />

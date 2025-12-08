@@ -37,3 +37,6 @@ COMMENT ON COLUMN user_favorites.user_id IS 'Reference to the user who favorited
 COMMENT ON COLUMN user_favorites.station_id IS 'Reference to the favorited station';
 
 
+
+
+

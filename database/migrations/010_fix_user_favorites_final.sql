@@ -71,3 +71,6 @@ WHERE tablename = 'user_favorites';
 -- 2. Users can add their own favorites (INSERT)
 -- 3. Users can remove their own favorites (DELETE)
 
+
+
+

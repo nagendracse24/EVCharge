@@ -140,3 +140,6 @@ CREATE POLICY "Authenticated users can vote" ON report_votes FOR INSERT WITH CHE
 CREATE POLICY "Users can update own votes" ON report_votes FOR UPDATE USING (auth.uid() = user_id);
 
 
+
+
+

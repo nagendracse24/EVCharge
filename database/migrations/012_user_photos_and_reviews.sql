@@ -298,3 +298,6 @@ WHERE tablename IN ('station_photos', 'station_reviews', 'review_votes');
 SELECT tgname FROM pg_trigger 
 WHERE tgname LIKE 'update_%_stats%' OR tgname LIKE 'update_%_count%';
 
+
+
+

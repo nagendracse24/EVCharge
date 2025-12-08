@@ -1,15 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, Zap, CreditCard, Info, CheckCircle2, AlertTriangle } from 'lucide-react'
-import { StationConnector } from '@/types/shared'
+import { Calendar, Clock, Zap, CreditCard, CheckCircle2, AlertTriangle, X, Car } from 'lucide-react'
+import { StationConnector, Vehicle } from '@/types/shared'
 import { useAppStore } from '@/store/appStore'
 import { useRazorpay } from '@/hooks/useRazorpay'
+import { useVehicles } from '@/hooks/useVehicles'
 
 interface SlotBookingProps {
   stationId: string
   stationName: string
-  network: string
+  network?: string
+  networks?: Array<{ network: string; connectors: StationConnector[] }> // For grouped stations
   connectors: StationConnector[]
   onClose: () => void
 }
@@ -20,9 +22,13 @@ interface TimeSlot {
   is_available: boolean
 }
 
-export default function SlotBooking({ stationId, stationName, network, connectors, onClose }: SlotBookingProps) {
-  const { selectedVehicle } = useAppStore()
+export default function SlotBooking({ stationId, stationName, network, networks, connectors, onClose }: SlotBookingProps) {
+  const { selectedVehicle, setSelectedVehicle } = useAppStore()
+  const { data: vehiclesData } = useVehicles()
+  const vehicles = vehiclesData?.data || []
   const { initiatePayment, loading: paymentLoading } = useRazorpay()
+  
+  const [selectedNetwork, setSelectedNetwork] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [selectedConnector, setSelectedConnector] = useState<string>('')
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
@@ -34,54 +40,41 @@ export default function SlotBooking({ stationId, stationName, network, connector
   const [bookingId, setBookingId] = useState<string | null>(null)
   const [showPayment, setShowPayment] = useState(false)
   
-  // Check connector compatibility with selected vehicle
-  const getConnectorCompatibility = (connector: StationConnector) => {
-    if (!selectedVehicle) return { compatible: true, reason: '' }
-    
-    const vehicleConnectorType = connector.is_dc_fast 
-      ? selectedVehicle.dc_connector_type 
-      : selectedVehicle.ac_connector_type
-    
-    if (!vehicleConnectorType) {
-      return { 
-        compatible: false, 
-        reason: `Your ${selectedVehicle.brand} ${selectedVehicle.model} doesn't support ${connector.is_dc_fast ? 'DC' : 'AC'} charging` 
-      }
-    }
-    
-    const isCompatible = connector.connector_type.toLowerCase().includes(vehicleConnectorType.toLowerCase()) ||
-                        vehicleConnectorType.toLowerCase().includes(connector.connector_type.toLowerCase())
-    
-    return {
-      compatible: isCompatible,
-      reason: isCompatible ? '' : `Connector mismatch: Station has ${connector.connector_type}, your vehicle needs ${vehicleConnectorType}`
-    }
-  }
+  // Get connectors to display (from selected network or all)
+  const displayConnectors = selectedNetwork && networks
+    ? networks.find(n => n.network === selectedNetwork)?.connectors || []
+    : connectors
 
-  // Initialize with today's date and auto-select compatible connector
+  // Filter ONLY compatible connectors
+  const compatibleConnectors = selectedVehicle
+    ? displayConnectors.filter(connector => {
+        // Check exact match: Type 2 DC != Type 2 AC
+        if (connector.is_dc_fast) {
+          return connector.connector_type === selectedVehicle.dc_connector_type
+        } else {
+          return connector.connector_type === selectedVehicle.ac_connector_type
+        }
+      })
+    : displayConnectors
+
+  // Initialize with today's date and auto-select first compatible connector
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0]
     setSelectedDate(today)
     
-    if (connectors.length > 0) {
-      // Try to auto-select a compatible connector if vehicle is selected
-      if (selectedVehicle) {
-        const compatibleConnector = connectors.find(c => {
-          const compat = getConnectorCompatibility(c)
-          return compat.compatible
-        })
-        
-        if (compatibleConnector) {
-          setSelectedConnector(compatibleConnector.id)
-        } else {
-          // No compatible connector found, still select first one but user will see warning
-          setSelectedConnector(connectors[0].id)
-        }
-      } else {
-        setSelectedConnector(connectors[0].id)
-      }
+    if (compatibleConnectors.length > 0) {
+      setSelectedConnector(compatibleConnectors[0].id)
+    } else {
+      setSelectedConnector('')
     }
-  }, [connectors, selectedVehicle])
+  }, [compatibleConnectors.length])
+  
+  // Auto-select first network if grouped
+  useEffect(() => {
+    if (networks && networks.length > 0 && !selectedNetwork) {
+      setSelectedNetwork(networks[0].network)
+    }
+  }, [networks])
 
   // Fetch available slots when date or connector changes
   useEffect(() => {
@@ -230,7 +223,7 @@ export default function SlotBooking({ stationId, stationName, network, connector
             <div>
               <div className="text-xs text-gray-400 mb-1">Network</div>
               <div className="px-2.5 py-1 bg-indigo-600 text-white font-bold rounded-md text-xs inline-block">
-                {network}
+                {selectedNetwork || network || 'Station'}
               </div>
             </div>
             
@@ -285,7 +278,7 @@ export default function SlotBooking({ stationId, stationName, network, connector
             
             <div className="text-sm text-gray-400 mb-1">Charging Network:</div>
             <div className="px-3 py-1.5 bg-indigo-600 text-white font-bold rounded-lg inline-block">
-              {network}
+              {selectedNetwork || network || 'Station'}
             </div>
             
             <div className="mt-3 pt-3 border-t border-gray-700">
@@ -330,13 +323,15 @@ export default function SlotBooking({ stationId, stationName, network, connector
               <p className="text-sm text-gray-400 mb-2">{stationName}</p>
               
               {/* PROMINENT NETWORK BADGE */}
-              <div className="flex items-center gap-2 bg-indigo-600/20 border-2 border-indigo-500 rounded-lg px-4 py-2 inline-flex">
-                <Zap className="w-5 h-5 text-indigo-400" />
-                <div>
-                  <div className="text-xs text-indigo-300 font-semibold uppercase tracking-wide">Charging Network</div>
-                  <div className="text-lg font-bold text-white">{network}</div>
+              {(selectedNetwork || network) && (
+                <div className="flex items-center gap-2 bg-indigo-600/20 border-2 border-indigo-500 rounded-lg px-4 py-2 inline-flex">
+                  <Zap className="w-5 h-5 text-indigo-400" />
+                  <div>
+                    <div className="text-xs text-indigo-300 font-semibold uppercase tracking-wide">Charging Network</div>
+                    <div className="text-lg font-bold text-white">{selectedNetwork || network || 'Station'}</div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
             <button
               onClick={onClose}
@@ -349,15 +344,71 @@ export default function SlotBooking({ stationId, stationName, network, connector
 
         {/* Content */}
         <div className="p-6 space-y-6">
-          {/* Vehicle Selection Reminder */}
-          {!selectedVehicle && (
-            <div className="p-4 bg-yellow-500/10 border-2 border-yellow-500/50 rounded-xl flex items-start gap-3">
-              <Info className="w-6 h-6 text-yellow-400 flex-shrink-0 mt-0.5" />
+          {/* Vehicle Selector - NEW! */}
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-3">
+              <Car className="w-4 h-4" />
+              Your Vehicle
+            </label>
+            <select
+              value={selectedVehicle?.id || ''}
+              onChange={(e) => {
+                const vehicle = vehicles.find(v => v.id === e.target.value)
+                setSelectedVehicle(vehicle || null)
+              }}
+              className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 focus:border-emerald-500 focus:outline-none transition-all text-white"
+            >
+              <option value="">Select your EV...</option>
+              {vehicles.map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.id}>
+                  {vehicle.brand} {vehicle.model} ({vehicle.year})
+                </option>
+              ))}
+            </select>
+            {!selectedVehicle && (
+              <p className="mt-2 text-xs text-yellow-400">
+                💡 Select your vehicle to see only compatible connectors
+              </p>
+            )}
+          </div>
+
+          {/* Network Selector - For grouped stations */}
+          {networks && networks.length > 1 && (
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-3">
+                <Zap className="w-4 h-4" />
+                Charging Network
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {networks.map((net) => (
+                  <button
+                    key={net.network}
+                    onClick={() => setSelectedNetwork(net.network)}
+                    className={`p-3 rounded-xl text-left transition-all ${
+                      selectedNetwork === net.network
+                        ? 'bg-emerald-600 text-white shadow-lg'
+                        : 'bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    <div className="font-semibold">{net.network}</div>
+                    <div className="text-xs opacity-80 mt-1">
+                      {net.connectors.length} connector{net.connectors.length > 1 ? 's' : ''}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Show message if no compatible connectors */}
+          {selectedVehicle && compatibleConnectors.length === 0 && (
+            <div className="p-4 bg-red-500/10 border-2 border-red-500/50 rounded-xl flex items-start gap-3">
+              <AlertTriangle className="w-6 h-6 text-red-400 flex-shrink-0 mt-0.5" />
               <div>
-                <div className="text-sm font-bold text-yellow-400 mb-1">Select Your Vehicle First!</div>
-                <div className="text-xs text-yellow-300">
-                  Go back to the main page and click "Select Vehicle" at the top to choose your EV. 
-                  This will help us show you compatible connectors automatically.
+                <div className="text-sm font-bold text-red-400 mb-1">No Compatible Connectors</div>
+                <div className="text-xs text-red-300">
+                  This station doesn't have connectors compatible with your {selectedVehicle.brand} {selectedVehicle.model}.
+                  Your vehicle needs: {selectedVehicle.dc_connector_type} (DC) or {selectedVehicle.ac_connector_type} (AC).
                 </div>
               </div>
             </div>
@@ -386,81 +437,47 @@ export default function SlotBooking({ stationId, stationName, network, connector
             </div>
           </div>
 
-          {/* Connector Selection with Compatibility */}
-          <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-3">
-              <Zap className="w-4 h-4" />
-              Select Connector
-              {selectedVehicle && (
-                <span className="text-xs text-gray-500 font-normal ml-2">
-                  (for {selectedVehicle.brand} {selectedVehicle.model})
-                </span>
-              )}
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {connectors.map((connector) => {
-                const compatibility = getConnectorCompatibility(connector)
-                const isSelected = selectedConnector === connector.id
-                
-                return (
-                  <button
-                    key={connector.id}
-                    onClick={() => setSelectedConnector(connector.id)}
-                    className={`p-4 rounded-xl text-left transition-all relative ${
-                      isSelected
-                        ? compatibility.compatible
-                          ? 'bg-green-600 border-2 border-green-500 text-white shadow-lg shadow-green-500/30'
-                          : 'bg-red-600/20 border-2 border-red-500 text-white'
-                        : compatibility.compatible
-                          ? 'bg-gray-800 border border-green-500/50 text-gray-300 hover:bg-gray-700'
-                          : 'bg-gray-800 border border-red-500/50 text-gray-400 hover:bg-gray-700 opacity-60'
-                    }`}
-                  >
-                    {/* Compatibility Badge */}
-                    {selectedVehicle && (
-                      <div className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center ${
-                        compatibility.compatible ? 'bg-green-500' : 'bg-red-500'
-                      }`}>
-                        {compatibility.compatible ? (
-                          <CheckCircle2 className="w-4 h-4 text-white" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-white" />
-                        )}
+          {/* Connector Selection - ONLY SHOW COMPATIBLE */}
+          {compatibleConnectors.length > 0 && (
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-3">
+                <Zap className="w-4 h-4" />
+                Select Connector
+                {selectedVehicle && (
+                  <span className="text-xs text-emerald-400 font-normal ml-2">
+                    ✓ Compatible with your {selectedVehicle.brand} {selectedVehicle.model}
+                  </span>
+                )}
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {compatibleConnectors.map((connector) => {
+                  const isSelected = selectedConnector === connector.id
+                  const currentNetwork = selectedNetwork || network || 'Station'
+                  
+                  return (
+                    <button
+                      key={connector.id}
+                      onClick={() => setSelectedConnector(connector.id)}
+                      className={`p-4 rounded-xl text-left transition-all ${
+                        isSelected
+                          ? 'bg-emerald-600 border-2 border-emerald-500 text-white shadow-lg'
+                          : 'bg-gray-800 border border-emerald-500/50 text-gray-300 hover:bg-gray-700'
+                      }`}
+                    >
+                      <div className="text-xs text-gray-400 mb-0.5">Network: {currentNetwork}</div>
+                      <div className="font-semibold">{connector.connector_type}</div>
+                      <div className="text-xs mt-1 opacity-80">
+                        {connector.power_kw} kW • {connector.is_dc_fast ? 'DC Fast' : 'AC'}
                       </div>
-                    )}
-                    
-                    <div className="text-xs text-gray-400 mb-0.5">Network: {network}</div>
-                    <div className="font-semibold pr-8">{connector.connector_type}</div>
-                    <div className="text-xs mt-1">
-                      {connector.power_kw} kW • {connector.is_dc_fast ? 'DC Fast' : 'AC'}
-                    </div>
-                    
-                    {/* Warning message if incompatible */}
-                    {selectedVehicle && !compatibility.compatible && (
-                      <div className="text-xs text-red-300 mt-2 font-medium">
-                        ⚠️ Not compatible
-                      </div>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-            
-            {/* Show compatibility warning if incompatible connector selected */}
-            {selectedVehicle && selectedConnector && !getConnectorCompatibility(
-              connectors.find(c => c.id === selectedConnector)!
-            ).compatible && (
-              <div className="mt-3 p-3 bg-red-500/10 border border-red-500/50 rounded-xl flex items-start gap-2">
-                <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <div className="text-sm font-semibold text-red-400">Compatibility Warning</div>
-                  <div className="text-xs text-red-300 mt-1">
-                    {getConnectorCompatibility(connectors.find(c => c.id === selectedConnector)!).reason}
-                  </div>
-                </div>
+                      {isSelected && (
+                        <CheckCircle2 className="w-5 h-5 text-white absolute top-2 right-2" />
+                      )}
+                    </button>
+                  )
+                })}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Duration Selection */}
           <div>

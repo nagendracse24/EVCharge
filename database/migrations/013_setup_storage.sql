@@ -30,3 +30,6 @@ USING (
 -- Verify
 SELECT * FROM storage.buckets WHERE id = 'station-photos';
 
+
+
+

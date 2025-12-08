@@ -28,3 +28,6 @@ CREATE POLICY "Users can update their own bookings"
   USING (auth.uid() = user_id);
 
 
+
+
+

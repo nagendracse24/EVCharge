@@ -60,3 +60,6 @@ SELECT 'Reports tables created successfully!' as status;
 SELECT tablename FROM pg_tables 
 WHERE tablename IN ('user_price_reports', 'user_availability_reports', 'report_votes');
 
+
+
+

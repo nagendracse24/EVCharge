@@ -99,3 +99,6 @@ SELECT policyname, cmd FROM pg_policies WHERE tablename = 'payments';
 -- 2. Users can create their own payments (INSERT)
 -- 3. System can update payments (UPDATE)
 
+
+
+
