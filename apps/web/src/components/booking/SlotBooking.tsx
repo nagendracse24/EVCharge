@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, Zap, CreditCard, CheckCircle2, AlertTriangle, X, Car } from 'lucide-react'
+import { Calendar, Clock, Zap, CreditCard, CheckCircle2, AlertTriangle, X, Car, Info } from 'lucide-react'
 import { StationConnector, Vehicle } from '@/types/shared'
 import { useAppStore } from '@/store/appStore'
 import { useRazorpay } from '@/hooks/useRazorpay'
@@ -361,7 +361,7 @@ export default function SlotBooking({ stationId, stationName, network, networks,
               <option value="">Select your EV...</option>
               {vehicles.map((vehicle) => (
                 <option key={vehicle.id} value={vehicle.id}>
-                  {vehicle.brand} {vehicle.model} ({vehicle.year})
+                  {vehicle.brand} {vehicle.model} {vehicle.variant ? `- ${vehicle.variant}` : ''}
                 </option>
               ))}
             </select>
